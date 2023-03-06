@@ -1,0 +1,8 @@
+*.xml
+*.csv
+*.txt
+test*
+*.cer
+*.pfx
+demo*
+report/
