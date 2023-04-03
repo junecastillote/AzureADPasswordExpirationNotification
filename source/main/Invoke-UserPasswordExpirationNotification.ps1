@@ -14,5 +14,4 @@ Function Invoke-UserPasswordExpirationNotification {
         SayError $_.Exception.Message
         return $null
     }
-
 }
