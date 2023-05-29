@@ -197,7 +197,7 @@ Function Send-UserPasswordExpirationNotice {
     }
     process {
         foreach ($item in $InputObject) {
-            ## If the Days Remaining to Expire is not within specified days in the config, skip the user.
+            ## If the Days Remaining to Expire is not within the specified days in the config, skip the user.
             ## For example, if the NotifyExpireInDays config value is 15,10,5,3,1 days, the script will only notify users
             ## whose passwords will expire 15,10,5,3,1 days.
             if ($item.daysRemaining -notin $settings.NotifyExpireInDays) {
