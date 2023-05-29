@@ -98,11 +98,14 @@ Function Get-UserPasswordExpiration {
     $users | Add-Member -MemberType NoteProperty -Name daysRemaining -Value 0
     $users | Add-Member -MemberType NoteProperty -Name Notified -Value $null
 
-    ## If the organizational password expiration policy is set to no expiration,
+    ## If the organizational password expiration policy is set to no expiration.
     $maxDaysValue = (([DateTime]::MaxValue) - (Get-Date)).TotalDays
 
+    ## Get the current datetime
+    $timeNow = Get-Date
+
     foreach ($user in $users) {
-        $timeNow = Get-Date
+
         $userDomain = ($user.userPrincipalName).Split('@')[1]
         $maxPasswordAge = $domainTable["$($userDomain)"]
         $passwordAge = (New-TimeSpan -Start $user.LastPasswordChangeDateTime -End $timeNow).Days
