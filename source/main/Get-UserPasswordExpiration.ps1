@@ -4,6 +4,11 @@ Function Get-UserPasswordExpiration {
 
     )
 
+    if (!(Get-MgContext)) {
+        SayError "A connection to Microsoft Graph is not found. Run the Connect-MgGraph command first and try again."
+        return $null
+    }
+
     ## Get domains list
     try {
         SayInfo "Getting all domains password policies."
@@ -34,8 +39,6 @@ Function Get-UserPasswordExpiration {
     foreach ($item in $domains.SyncRoot) {
         $domainTable.Add($item.id, $item.passwordValidityPeriodInDays)
     }
-
-    # Say $domainTable
 
     ## Get enabled accounts excluding guests
     try {
