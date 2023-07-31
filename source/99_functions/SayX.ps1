@@ -1,19 +1,9 @@
-using namespace System.Management.Automation
-
-class validConsoleColors : IValidateSetValuesGenerator {
-    [string[]] GetValidValues() {
-        $Values = ([enum]::GetValues([System.ConsoleColor]))
-        return $Values
-    }
-}
-
+#[enum]::GetValues([System.ConsoleColor])
 Function Say {
     param(
         [Parameter(Mandatory)]
         $Text,
         [Parameter()]
-        [ValidateSetAttribute([validConsoleColors])]
-        [System.ConsoleColor]
         $Color = 'Cyan'
     )
 
@@ -31,8 +21,6 @@ Function SayError {
         [Parameter(Mandatory)]
         $Text,
         [Parameter()]
-        [ValidateSetAttribute([validConsoleColors])]
-        [System.ConsoleColor]
         $Color = 'Red'
     )
     $Host.UI.RawUI.ForegroundColor = $Color
@@ -45,8 +33,6 @@ Function SayInfo {
         [Parameter(Mandatory)]
         $Text,
         [Parameter()]
-        [ValidateSetAttribute([validConsoleColors])]
-        [System.ConsoleColor]
         $Color = 'Green'
     )
     $Host.UI.RawUI.ForegroundColor = $Color
@@ -59,8 +45,6 @@ Function SayWarning {
         [Parameter(Mandatory)]
         $Text,
         [Parameter()]
-        [ValidateSetAttribute([validConsoleColors])]
-        [System.ConsoleColor]
         $Color = 'DarkYellow'
     )
     $Host.UI.RawUI.ForegroundColor = $Color

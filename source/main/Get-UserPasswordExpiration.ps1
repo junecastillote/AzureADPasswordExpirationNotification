@@ -1,21 +1,13 @@
 Function Get-UserPasswordExpiration {
     [CmdletBinding()]
     param (
-        [Parameter(Mandatory)]
-        [string]
-        $ClientID,
-        [Parameter(Mandatory)]
-        [System.Security.Cryptography.X509Certificates.X509Certificate2]
-        $ClientCertificate,
-        [Parameter(Mandatory)]
-        [string]
-        $TenantID
+
     )
 
     ## Get domains list
     try {
         SayInfo "Getting all domains password policies."
-        $domains = Get-MgDomain
+        $domains = Get-MgDomain | Sort-Object Id
         foreach ($domain in $domains) {
             if ($domain) {
                 if (!($domain.passwordValidityPeriodInDays)) {
@@ -29,6 +21,7 @@ Function Get-UserPasswordExpiration {
                 }
             }
         }
+        $domainsList = $domains.id
     }
     catch {
         SayError 'There was an error getting the list domains. The script will terminate.'
@@ -42,26 +35,19 @@ Function Get-UserPasswordExpiration {
         $domainTable.Add($item.id, $item.passwordValidityPeriodInDays)
     }
 
-    Say $domainTable
+    # Say $domainTable
 
     ## Get enabled accounts excluding guests
     try {
         SayInfo "Getting all enabled accounts excluding guests and with DisablePasswordExpiration policy assigned."
-        $properties = "UserPrincipalName","mail","displayName","PasswordPolicies","LastPasswordChangeDateTime"
-        $users = Get-MgUser -Filter "userType eq 'member' and accountEnabled eq true" -Property $properties -CountVariable userCount -ConsistencyLevel Eventual -All -PageSize 999 -Verbose | Select-Object $properties | Where-Object {$_.PasswordPolicies -ne 'DisablePasswordExpiration'}
-
-
-        # $uri = "https://graph.microsoft.com/beta/users?`$filter=userType eq 'member' and accountEnabled eq true&`$select=UserPrincipalName,mail,displayName,PasswordPolicies,LastPasswordChangeDateTime&`$top=999&`$count=true"
-        # $result = (Invoke-RestMethod -Method Get -Uri $uri -Headers @{Authorization = "Bearer $AccessToken"; ConsistencyLevel = 'Eventual' } -ContentType 'application/json' -ErrorAction Stop)
-        # $users = [System.Collections.ArrayList]@()
-        # $users.AddRange($($result.value | Where-Object { $_.PasswordPolicies -ne 'DisablePasswordExpiration' } ))
-        # $totalUserCount = $result.'@odata.count'
-        # SayInfo "$($users.Count) of $($totalUserCount) users"
-        # while ($result.'@odata.nextLink') {
-        #     $result = (Invoke-RestMethod -Method Get -Uri $result.'@odata.nextLink' -Headers @{Authorization = "Bearer $AccessToken" } -ContentType 'application/json' -ErrorAction Stop)
-        #     $users.AddRange($($result.value | Where-Object { $_.PasswordPolicies -ne 'DisablePasswordExpiration' } ))
-        #     SayInfo "$($users.Count) of $($totalUserCount) users"
-        # }
+        $properties = "UserPrincipalName", "mail", "displayName", "PasswordPolicies", "LastPasswordChangeDateTime", "CreatedDateTime"
+        # $users = Get-MgUser -Filter "userType eq 'member' and accountEnabled eq true" -Property $properties -CountVariable userCount -ConsistencyLevel Eventual -All -PageSize 999 -Verbose | Select-Object $properties | Where-Object {$_.PasswordPolicies -ne 'DisablePasswordExpiration'}
+        $users = Get-MgUser -Filter "userType eq 'member' and accountEnabled eq true" `
+            -Property $properties -CountVariable userCount `
+            -ConsistencyLevel Eventual -All -PageSize 999 -Verbose | `
+            Select-Object $properties | Where-Object {
+            $_.PasswordPolicies -ne 'DisablePasswordExpiration' -and "$(($_.userPrincipalName).Split('@')[1])" -in $domainsList
+        }
     }
     catch {
         SayError 'There was an error getting the list of users in Azure AD. The script will terminate.'
@@ -84,7 +70,6 @@ Function Get-UserPasswordExpiration {
     $timeNow = Get-Date
 
     foreach ($user in $users) {
-
         $userDomain = ($user.userPrincipalName).Split('@')[1]
         $maxPasswordAge = $domainTable["$($userDomain)"]
         $passwordAge = (New-TimeSpan -Start $user.LastPasswordChangeDateTime -End $timeNow).Days
@@ -97,13 +82,14 @@ Function Get-UserPasswordExpiration {
                 (Get-Date $user.LastPasswordChangeDateTime).AddDays($maxPasswordAge)
             }
         )
-        $daysRemaining = (New-TimeSpan -Start $timeNow -End $expiresOn).Days
-
         $user.Domain = $userDomain
         $user.maxPasswordAge = $maxPasswordAge
         $user.passwordAge = $passwordAge
         $user.expiresOn = $expiresOn
-        $user.daysRemaining = $daysRemaining
+        $user.daysRemaining = $(
+            if (($daysRemaining = (New-TimeSpan -Start $timeNow -End $expiresOn).Days) -lt 1) { 0 }
+            else { $daysRemaining }
+        )
     }
     return $users
 }
