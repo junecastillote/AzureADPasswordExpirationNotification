@@ -1,4 +1,4 @@
-#[enum]::GetValues([System.ConsoleColor])
+# [enum]::GetValues([System.ConsoleColor])
 Function Say {
     param(
         [Parameter(Mandatory)]
