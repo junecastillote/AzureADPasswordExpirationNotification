@@ -13,7 +13,6 @@ Function Say {
     }
     $Text | Out-Default
     [Console]::ResetColor()
-
 }
 
 Function SayError {

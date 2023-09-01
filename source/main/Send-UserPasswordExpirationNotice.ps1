@@ -30,7 +30,7 @@ Function Send-UserPasswordExpirationNotice {
 
         [Parameter()]
         [string[]]
-        $SendSummaryToAdmins,
+        $SendReportToAdmins,
 
         [Parameter()]
         [string[]]
@@ -43,19 +43,23 @@ Function Send-UserPasswordExpirationNotice {
 
     begin {
 
-        if (($NotifyUsers -or $SendSummaryToAdmins -or $RedirectNotificationTo) -and !$From) {
+        if (($NotifyUsers -or $SendReportToAdmins -or $RedirectNotificationTo) -and !$From) {
             SayError 'The "From" email address cannot be empty when "NotifyUsers", "SendSummaryToAdmins", or "RedirectNotificationTo" are enabled.'
-            Continue;
-        }
-
-        if ($RedirectNotificationTo -and $NotifyUsers) {
-            SayError 'The "RedirectNotificationTo" parameter cannot be used simultaneously with "NotifyUsers".'
             Continue;
         }
 
         if (!(Get-MgContext)) {
             SayError "A connection to Microsoft Graph is not found. Run the Connect-MgGraph command first and try again."
             Continue;
+        }
+
+        if ($RedirectNotificationTo -and !$NotifyUsers) {
+            $NotifyUsers = $true
+            SayInfo "RedirectNotificationTo is enabled. All email notifications will be sent to [$($RedirectNotificationTo -join ',')]."
+        }
+
+        if ($SendReportToAdmins) {
+            SayInfo "Summary report will be sent to [$($SendReportToAdmins -join ',')]."
         }
 
         $ThisFunction = ($MyInvocation.MyCommand)
@@ -65,7 +69,12 @@ Function Send-UserPasswordExpirationNotice {
         if (!$EmailTemplate) {
             $EmailTemplate = "$($ResourceFolder)\user_notification_template.html"
         }
+
         $template = Get-Content $EmailTemplate -Raw
+
+        $organization = Get-MgOrganization
+
+        $todayString = (Get-Date -Format 'yyyyMMddTHHmm')
 
         ## Functions
         ## JSON email address conversion
@@ -81,34 +90,16 @@ Function Send-UserPasswordExpirationNotice {
             }
             return $jsonRecipients
         }
-        ## End Functions
 
-        ## Create the temporary CSV file for the report.
-        $tempCSV = "$($env:temp)\$($organization.DisplayName)_User_Password_Expiration.csv"
-        $null = New-Item -ItemType FIle -Path $tempCSV -Force -Confirm:$false
-
-        ## Create the HTML email copy path (if CopyHtmlToFolder is enabled)
-        if ($CopyHtmlToFolder) {
-            if (!(Test-Path ($CopyHtmlToFolder))) {
-                try {
-                    $null = New-Item -ItemType Directory -Path ($CopyHtmlToFolder) -Force -Confirm:$false -ErrorAction Stop
-                    $HtmlFolder = Resolve-Path ($CopyHtmlToFolder)
-                }
-                catch {
-                    SayError $_.Exception.Message
-                    $CopyHtmlToFolder = "$($env:temp)\report"
-                    $null = New-Item -ItemType Directory -Path $CopyHtmlToFolder -Force -Confirm:$false
-                    # $HtmlFolder = Resolve-Path $CopyHtmlToFolder
-                }
-            }
-            $HtmlFolder = Resolve-Path $CopyHtmlToFolder
-            SayInfo "Copies of the HTML messages will be saved in $HtmlFolder"
-        }
-
-        # Get attachments
-        [System.Collections.ArrayList]$fileAttachment = @()
-        if ($NotifyUsers -and $Attachment) {
-            foreach ($file in $Attachment) {
+        ## Get attachments and convert into Base64 string
+        Function GetAttachments {
+            param (
+                [Parameter(Mandatory)]
+                [string[]]
+                $Path
+            )
+            [System.Collections.ArrayList]$fileAttachment = @()
+            foreach ($file in $Path) {
                 try {
                     $filename = (Resolve-Path $file -ErrorAction STOP).Path
 
@@ -132,8 +123,37 @@ Function Send-UserPasswordExpirationNotice {
                     SayError "Attachment: $($_.Exception.Message)"
                 }
             }
+            return $fileAttachment
         }
 
+        ## End Functions
+
+        ## Create the temporary CSV file for the report.
+        $tempCSV = "$($env:temp)\$($organization.DisplayName)_$($todayString)_User_Password_Expiration.csv"
+        $null = New-Item -ItemType File -Path $tempCSV -Force -Confirm:$false
+
+        ## Create the HTML email copy path (if CopyHtmlToFolder is enabled)
+        if ($CopyHtmlToFolder) {
+            if (!(Test-Path ($CopyHtmlToFolder))) {
+                try {
+                    $null = New-Item -ItemType Directory -Path ($CopyHtmlToFolder) -Force -Confirm:$false -ErrorAction Stop
+                    $HtmlFolder = Resolve-Path ($CopyHtmlToFolder)
+                }
+                catch {
+                    SayError $_.Exception.Message
+                    $CopyHtmlToFolder = "$($env:temp)\report"
+                    $null = New-Item -ItemType Directory -Path $CopyHtmlToFolder -Force -Confirm:$false
+                    # $HtmlFolder = Resolve-Path $CopyHtmlToFolder
+                }
+            }
+            $HtmlFolder = Resolve-Path $CopyHtmlToFolder
+            SayInfo "Copies of the HTML messages will be saved in $HtmlFolder"
+        }
+
+        # Get attachments
+        if ($NotifyUsers -and $Attachment) {
+            $fileAttachment = GetAttachments $Attachment
+        }
     }
     process {
         foreach ($item in $InputObject) {
@@ -171,7 +191,7 @@ Function Send-UserPasswordExpirationNotice {
 
             if ($CopyHtmlToFolder) {
                 try {
-                    $HTMLMessage | Out-File "$($HtmlFolder)\pwdexp_$($item.mail).html" -ErrorAction Stop
+                    $HTMLMessage | Out-File "$($HtmlFolder)\pwdexp_$($todayString)_$($item.mail).html" -ErrorAction Stop
                 }
                 catch {
                     SayError "Error saving the HTML email copy to file. $($_.Exception.Message)"
@@ -246,6 +266,52 @@ Function Send-UserPasswordExpirationNotice {
         }
     }
     end {
+        if ($SendReportToAdmins) {
+            # Get attachments
+            $fileAttachment = GetAttachments $tempCSV
 
+            $mailObject = @{
+                Message                = @{
+                    Subject     = "Azure AD Password Expiration Report"
+                    Body        = @{
+                        ContentType = "HTML"
+                        Content     = "Attached."
+                    }
+                    attachments = @(
+
+                    )
+                }
+                internetMessageHeaders = @(
+                    @{
+                        name  = "X-Mailer"
+                        value = "AADPwdExpNotif by june.castillote@gmail.com"
+                    }
+                )
+                SaveToSentItems        = "false"
+            }
+
+            foreach ($file in $fileAttachment) {
+                $mailObject.message.attachments += @{
+                    "@odata.type"  = "#microsoft.graph.fileAttachment"
+                    "name"         = $(Split-Path $file.filename -Leaf)
+                    "contentBytes" = $file.fileByte
+                }
+            }
+
+            $mailObject.message += @{
+                toRecipients = @(
+                    $(ConvertRecipientsToJSON $SendReportToAdmins)
+                )
+            }
+
+            try {
+                SayInfo "Sending password expiration report to [$($SendReportToAdmins -join ",")]"
+                Send-MgUserMail -UserId $From -BodyParameter $mailObject
+            }
+            catch {
+                SayError "There was an error sending the report."
+                SayError $_.Exception.Message
+            }
+        }
     }
 }
