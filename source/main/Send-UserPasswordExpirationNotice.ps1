@@ -44,7 +44,7 @@ Function Send-UserPasswordExpirationNotice {
     begin {
 
         if (($NotifyUsers -or $SendReportToAdmins -or $RedirectNotificationTo) -and !$From) {
-            SayError 'The "From" email address cannot be empty when "NotifyUsers", "SendSummaryToAdmins", or "RedirectNotificationTo" are enabled.'
+            SayError 'The "From" email address cannot be empty when "NotifyUsers", "SendReportToAdmins", or "RedirectNotificationTo" are enabled.'
             Continue;
         }
 
@@ -70,7 +70,7 @@ Function Send-UserPasswordExpirationNotice {
             $EmailTemplate = "$($ResourceFolder)\user_notification_template.html"
         }
 
-        $template = Get-Content $EmailTemplate -Raw
+        $notificationTemplate = Get-Content $EmailTemplate -Raw
 
         $organization = Get-MgOrganization
 
@@ -179,7 +179,7 @@ Function Send-UserPasswordExpirationNotice {
                 }
             )
 
-            $HTMLMessage = $template.Replace(
+            $HTMLMessage = $notificationTemplate.Replace(
                 '$name', $($item.displayName)
             ).Replace(
                 '$expireInDays', $expireMessageString
@@ -267,15 +267,38 @@ Function Send-UserPasswordExpirationNotice {
     }
     end {
         if ($SendReportToAdmins) {
+
+
+
             # Get attachments
             $fileAttachment = GetAttachments $tempCSV
+
+            # Summary
+            $data = Import-Csv $tempCSV
+            $summary = [PSCustomObject]([ordered]@{
+                    Total       = @($data).count
+                    Notified    = @($data | Where-Object { $_.Notified -eq 'Yes' }).Count
+                    NotNotified = @($data | Where-Object { $_.Notified -ne 'Yes' }).Count
+                })
+
+            # Get summary template
+            $reportTemplate = Get-Content "$($ResourceFolder)\admin_report_template.html" -Raw
+
+            # Compose mail body
+            $summaryMessage = $reportTemplate.Replace(
+                '$totalCount', $($summary.Total)
+            ).Replace(
+                '$notifiedCount', $($summary.Notified)
+            ).Replace(
+                '$notNotifiedCount', $($summary.NotNotified)
+            )
 
             $mailObject = @{
                 Message                = @{
                     Subject     = "Azure AD Password Expiration Report"
                     Body        = @{
                         ContentType = "HTML"
-                        Content     = "Attached."
+                        Content     = $summaryMessage
                     }
                     attachments = @(
 
