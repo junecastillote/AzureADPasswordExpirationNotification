@@ -60,10 +60,10 @@ Function Get-UserPasswordExpiration {
 
     ## Add properties to the $users objects
     $users | Add-Member -MemberType NoteProperty -Name Domain -Value $null
-    $users | Add-Member -MemberType NoteProperty -Name maxPasswordAge -Value 0
-    $users | Add-Member -MemberType NoteProperty -Name passwordAge -Value 0
-    $users | Add-Member -MemberType NoteProperty -Name expiresOn -Value (Get-Date '1970-01-01')
-    $users | Add-Member -MemberType NoteProperty -Name daysRemaining -Value 0
+    $users | Add-Member -MemberType NoteProperty -Name MaxPasswordAge -Value 0
+    $users | Add-Member -MemberType NoteProperty -Name PasswordAge -Value 0
+    $users | Add-Member -MemberType NoteProperty -Name ExpiresOn -Value (Get-Date '1970-01-01')
+    $users | Add-Member -MemberType NoteProperty -Name DaysRemaining -Value 0
     $users | Add-Member -MemberType NoteProperty -Name Notified -Value $null
 
     ## If the organizational password expiration policy is set to no expiration.
