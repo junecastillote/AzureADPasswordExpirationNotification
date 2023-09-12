@@ -1,0 +1,92 @@
+<html>
+
+<head>
+    <style>
+        * {
+            font-family: 'Segoe UI', arial, sans-serif;
+        }
+
+        table {
+            border-collapse: collapse;
+            border: 1px solid #dddddd;
+            /* border-style: dotted; */
+            /* width: 50%; */
+        }
+
+        table th {
+            border: 1px solid #dddddd;
+            padding: 5px;
+            text-align: left;
+        }
+
+        table td {
+            border: 1px solid #dddddd;
+            padding: 5px;
+            text-align: left;
+        }
+
+        table.callout {
+            border-collapse: collapse;
+        }
+
+        table.callout td {
+            background-color: #dddddd;
+            border: 1px solid #dddddd;
+            padding: 8px;
+        }
+    </style>
+</head>
+
+<body>
+    <!-- <hr> -->
+    <h2><a name="chpwd">User Password Expiration Notice Summary</a></h2>
+    <hr>
+    <p>
+    <table>
+        <tr>
+            <th>
+                Users with expiring passwords
+            </th>
+            <td>
+                $totalCount
+            </td>
+        </tr>
+        <tr>
+            <th>
+                Users notified
+            </th>
+            <td>
+                $notifiedCount
+            </td>
+        </tr>
+        <tr>
+            <th>
+                Users not notified
+            </th>
+            <td>
+                $notNotifiedCount
+            </td>
+        </tr>
+
+    </table>
+    </p>
+    <hr>
+    <p>
+    <table class="callout">
+        <tr>
+            <td>
+                <img
+                    src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAB4AAAAeCAYAAAA7MK6iAAAACXBIWXMAAAsTAAALEwEAmpwYAAABK0lEQVR4nGNgGErAr3KbVkDttorAmm3lATVbNOliaWj9nrbojkMvSxbd+lu68PYfEDu0cXcLTS0NqN/pltBz/G339g//kXFi7/E3ftXbXWhmcUjDnt1N656jWArCILGQht07aWnxufYtbzAsBomFNO4+SzOLg+t29pctuv0b3eLSRbd/Bdfv7qGZxX6lG3hDG/bcq1n56C/MUhA7tHHP3dD6/TwMtASB9TvFQpt2bwtt2P0MhEMadm/1qNwmyjCsQGDtjq7g+t0TcGGQPE0sDmva+7ZmxcP/uDBInuYWN6x5ipGdwpv3vaB5UEe27H9FN4uRAciSUYvDR4OaFiB8NHFtH83HwyFxBRIoq0FiNKkiwwjUTiAxmlSRYQTqY5rVzYEEWiB0aY1QCwAAX3g1d0Y8ao8AAAAASUVORK5CYII=" />
+            </td>
+            <td>
+                <b>Note:</b> Users without an email address are not notified.
+            </td>
+        </tr>
+    </table>
+    </p>
+
+
+
+</body>
+
+</html>
