@@ -49,7 +49,7 @@ Function Get-UserPasswordExpiration {
             -Property $properties -CountVariable userCount `
             -ConsistencyLevel Eventual -All -PageSize 999 -Verbose | `
             Select-Object $properties | Where-Object {
-            $_.PasswordPolicies -ne 'DisablePasswordExpiration' -and "$(($_.userPrincipalName).Split('@')[1])" -in $domainsList
+            $_.PasswordPolicies -notcontains 'DisablePasswordExpiration' -and "$(($_.userPrincipalName).Split('@')[1])" -in $domainsList
         }
     }
     catch {
