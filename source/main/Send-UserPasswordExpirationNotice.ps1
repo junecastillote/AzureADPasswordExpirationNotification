@@ -283,7 +283,7 @@ Function Send-UserPasswordExpirationNotice {
                     $item.Notified = 'No (no email address)'
                 }
             }
-            $item | Export-Csv -Path $tempCsv -Append -Force -Confirm:$false -NoTypeInformation
+            $item | Export-Csv -Path $tempCsv -Append -Force -Confirm:$false -NoTypeInformation -Encoding Unicode -Delimiter "`t"
         }
     }
     end {
@@ -298,6 +298,7 @@ Function Send-UserPasswordExpirationNotice {
                     Total       = @($data).count
                     Notified    = @($data | Where-Object { $_.Notified -eq 'Yes' }).Count
                     NotNotified = @($data | Where-Object { $_.Notified -ne 'Yes' }).Count
+                    Redirected  = @($data | Where-Object { $_.Notified -eq 'No (Redirected)' }).Count
                 })
 
             # Get summary template
@@ -313,6 +314,12 @@ Function Send-UserPasswordExpirationNotice {
             ).Replace(
                 '$organizationName', $($organization.DisplayName)
             )
+
+            if ($RedirectNotificationTo) {
+                $summaryMessage = $summaryMessage.Replace(
+                    'Users not notified', 'Redirected notification'
+                )
+            }
 
             $mailObject = @{
                 Message                = @{
