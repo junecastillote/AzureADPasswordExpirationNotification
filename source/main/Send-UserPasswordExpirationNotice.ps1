@@ -283,7 +283,7 @@ Function Send-UserPasswordExpirationNotice {
                     $item.Notified = 'No (no email address)'
                 }
             }
-            $item | Export-Csv -Path $tempCsv -Append -Force -Confirm:$false -NoTypeInformation
+            $item | Export-Csv -Path $tempCsv -Append -Force -Confirm:$false -NoTypeInformation -Encoding Unicode
         }
     }
     end {
