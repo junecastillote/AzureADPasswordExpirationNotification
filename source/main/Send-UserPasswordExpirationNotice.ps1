@@ -43,23 +43,32 @@ Function Send-UserPasswordExpirationNotice {
 
     begin {
 
+        if (@($InputObject | Where-Object { $_.DaysRemaining -in $PasswordNotificationWindowInDays }).Count -lt 1) {
+            Say "The input data do not contain users whose passwords expire in $($PasswordNotificationWindowInDays -join ',') days."
+            Say "No actions taken. Terminating script."
+            Continue
+        }
+
         if (($NotifyUsers -or $SendReportToAdmins -or $RedirectNotificationTo) -and !$From) {
             SayError 'The "From" email address cannot be empty when "NotifyUsers", "SendReportToAdmins", or "RedirectNotificationTo" are enabled.'
-            Continue;
+            Continue
         }
 
         if (!(Get-MgContext)) {
             SayError "A connection to Microsoft Graph is not found. Run the Connect-MgGraph command first and try again."
-            Continue;
+            Continue
         }
 
         if ($RedirectNotificationTo -and !$NotifyUsers) {
             $NotifyUsers = $true
-            SayInfo "RedirectNotificationTo is enabled. All email notifications will be sent to [$($RedirectNotificationTo -join ',')]."
         }
 
         if ($SendReportToAdmins) {
             SayInfo "Summary report will be sent to [$($SendReportToAdmins -join ',')]."
+        }
+
+        if ($RedirectNotificationTo) {
+            SayInfo "RedirectNotificationTo is enabled. All email notifications will be sent to [$($RedirectNotificationTo -join ',')]."
         }
 
         $ThisFunction = ($MyInvocation.MyCommand)
@@ -156,14 +165,14 @@ Function Send-UserPasswordExpirationNotice {
         }
     }
     process {
-        foreach ($item in $InputObject) {
+        foreach ($item in ($InputObject | Where-Object { $_.DaysRemaining -in $PasswordNotificationWindowInDays })) {
             ## If the Days Remaining to Expire is not within the specified days in the config, skip the user.
             ## For example, if the NotifyExpireInDays config value is 15,10,5,3,1 days, the script will only notify users
             ## whose passwords will expire 15,10,5,3,1 days.
-            if ($item.daysRemaining -notin $PasswordNotificationWindowInDays) {
-                # Skip to the next user
-                continue
-            }
+            # if ($item.daysRemaining -notin $PasswordNotificationWindowInDays) {
+            #     # Skip to the next user
+            #     continue
+            # }
 
             ## The HTML template can have these three (3) variables and will be substituted with real values.
             ## * $name = will be replaced with the 'DisplayName' value.
@@ -184,7 +193,7 @@ Function Send-UserPasswordExpirationNotice {
             ).Replace(
                 '$expireInDays', $expireMessageString
             ).Replace(
-                '$expirationDate', "$(Get-Date $item.expiresOn -Format 'MMMM dd, yyyy')"
+                '$expirationDate', "$(Get-Date $item.PasswordExpiresOn -Format 'MMMM dd, yyyy')"
             ).Replace(
                 '$upn', $item.userPrincipalName
             )
@@ -228,6 +237,10 @@ Function Send-UserPasswordExpirationNotice {
                         }
                     }
 
+                    # If the RedirectNotificationTo is specified, all user notifications
+                    # are redirected. This is useful when testing notifications. Instead
+                    # of sending test notifications to users, you can use this parameter
+                    # to send the notification to a test mailbox first.
                     if ($RedirectNotificationTo) {
                         $mailObject.message += @{
                             toRecipients = @(
@@ -236,6 +249,8 @@ Function Send-UserPasswordExpirationNotice {
                         }
                     }
                     else {
+                        # If the RedirectNotificationTo is not specified, the notifications
+                        # will be sent to the users whose passwords are about to expire.
                         $mailObject.message += @{
                             ToRecipients = @(
                                 @{
@@ -247,22 +262,26 @@ Function Send-UserPasswordExpirationNotice {
                         }
                     }
                     try {
-                        SayInfo "Sending password expiration notice to [$($item.displayName)] [Expires in: $($item.daysRemaining) days] [Expires on: $($item.expiresOn)]"
-                        # $null = Invoke-RestMethod -Method Post -Uri $mailApiUri -Body ($mailObject | ConvertTo-Json -Depth 5) -Headers @{Authorization = "Bearer $AccessToken" } -ContentType application/json -ErrorAction STOP
+                        if ($RedirectNotificationTo) {
+                            SayInfo "Redirecting password expiration notice for [$($item.displayName)] [Expires in: $($item.daysRemaining) days] [Expires on: $($item.PasswordExpiresOn)]"
+                        }
+                        else {
+                            SayInfo "Sending password expiration notice to [$($item.displayName)] [Expires in: $($item.daysRemaining) days] [Expires on: $($item.PasswordExpiresOn)]"
+                        }
                         Send-MgUserMail -UserId $From -BodyParameter $mailObject
                         $item.Notified = 'Yes'
                     }
                     catch {
                         SayError "There was an error sending the notification to $($item.displayName)"
                         SayError $_.Exception.Message
-                        $item.Notified = 'No (error)'
+                        $item.Notified = "No (error)"
                     }
                 }
                 else {
                     $item.Notified = 'No (no email address)'
                 }
             }
-            $item | Export-Csv -Path $tempCsv -Append -Force -Confirm:$false
+            $item | Export-Csv -Path $tempCsv -Append -Force -Confirm:$false -NoTypeInformation
         }
     }
     end {
