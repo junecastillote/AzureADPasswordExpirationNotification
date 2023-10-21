@@ -298,6 +298,7 @@ Function Send-UserPasswordExpirationNotice {
                     Total       = @($data).count
                     Notified    = @($data | Where-Object { $_.Notified -eq 'Yes' }).Count
                     NotNotified = @($data | Where-Object { $_.Notified -ne 'Yes' }).Count
+                    Redirected = @($data | Where-Object { $_.Notified -eq 'No (Redirected)' }).Count
                 })
 
             # Get summary template
@@ -312,6 +313,8 @@ Function Send-UserPasswordExpirationNotice {
                 '$notNotifiedCount', $($summary.NotNotified)
             ).Replace(
                 '$organizationName', $($organization.DisplayName)
+            ).Replace(
+                '$redirectedCount', $($summary.Redirected)
             )
 
             $mailObject = @{
