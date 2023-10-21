@@ -264,12 +264,14 @@ Function Send-UserPasswordExpirationNotice {
                     try {
                         if ($RedirectNotificationTo) {
                             SayInfo "Redirecting password expiration notice for [$($item.displayName)] [Expires in: $($item.daysRemaining) days] [Expires on: $($item.PasswordExpiresOn)]"
+                            Send-MgUserMail -UserId $From -BodyParameter $mailObject -ErrorAction Stop
+                            $item.Notified = 'No (Redirected)'
                         }
                         else {
                             SayInfo "Sending password expiration notice to [$($item.displayName)] [Expires in: $($item.daysRemaining) days] [Expires on: $($item.PasswordExpiresOn)]"
+                            Send-MgUserMail -UserId $From -BodyParameter $mailObject -ErrorAction Stop
+                            $item.Notified = 'Yes'
                         }
-                        Send-MgUserMail -UserId $From -BodyParameter $mailObject
-                        $item.Notified = 'Yes'
                     }
                     catch {
                         SayError "There was an error sending the notification to $($item.displayName)"
@@ -286,8 +288,6 @@ Function Send-UserPasswordExpirationNotice {
     }
     end {
         if ($SendReportToAdmins) {
-
-
 
             # Get attachments
             $fileAttachment = GetAttachments $tempCSV
@@ -310,6 +310,8 @@ Function Send-UserPasswordExpirationNotice {
                 '$notifiedCount', $($summary.Notified)
             ).Replace(
                 '$notNotifiedCount', $($summary.NotNotified)
+            ).Replace(
+                '$organizationName', $($organization.DisplayName)
             )
 
             $mailObject = @{
