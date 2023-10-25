@@ -138,7 +138,7 @@ Function Send-UserPasswordExpirationNotice {
         ## End Functions
 
         ## Create the temporary CSV file for the report.
-        $tempCSV = "$($env:temp)\$($organization.DisplayName)_$($todayString)_User_Password_Expiration.csv"
+        $tempCSV = "$($env:temp)\$($organization.DisplayName)_$($todayString)_User_Password_Expiration_List.csv"
         $null = New-Item -ItemType File -Path $tempCSV -Force -Confirm:$false
 
         ## Create the HTML email copy path (if CopyHtmlToFolder is enabled)
@@ -288,12 +288,11 @@ Function Send-UserPasswordExpirationNotice {
     }
     end {
         if ($SendReportToAdmins) {
-
             # Get attachments
             $fileAttachment = GetAttachments $tempCSV
 
             # Summary
-            $data = Import-Csv $tempCSV
+            $data = Import-Csv $tempCSV -Delimiter "`t"
             $summary = [PSCustomObject]([ordered]@{
                     Total       = @($data).count
                     Notified    = @($data | Where-Object { $_.Notified -eq 'Yes' }).Count
@@ -320,6 +319,8 @@ Function Send-UserPasswordExpirationNotice {
                     'Users not notified', 'Redirected notification'
                 )
             }
+
+            $summaryMessage | Out-File -Encoding unicode -FilePath "$(Split-Path $tempCSV -Parent)\$($organization.DisplayName)_$($todayString)_User_Password_Expiration_Report.html"
 
             $mailObject = @{
                 Message                = @{
