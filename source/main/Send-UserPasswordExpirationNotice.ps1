@@ -324,7 +324,7 @@ Function Send-UserPasswordExpirationNotice {
 
             $mailObject = @{
                 Message                = @{
-                    Subject     = "Azure AD Password Expiration Report"
+                    Subject     = "Azure AD Password Expiration Report for $($organization.DisplayName)"
                     Body        = @{
                         ContentType = "HTML"
                         Content     = $summaryMessage
