@@ -86,8 +86,8 @@ Function Send-UserPasswordExpirationNotice {
         $todayString = (Get-Date -Format 'yyyyMMddTHHmm')
 
         ## Functions
-        ## JSON email address conversion
-        Function ConvertRecipientsToJSON {
+        ## Convert recipients string to hash table
+        Function RecipientStringToHashTable {
             param(
                 [Parameter(Mandatory)]
                 [string[]]
@@ -244,7 +244,7 @@ Function Send-UserPasswordExpirationNotice {
                     if ($RedirectNotificationTo) {
                         $mailObject.message += @{
                             toRecipients = @(
-                                $(ConvertRecipientsToJSON $RedirectNotificationTo)
+                                $(RecipientStringToHashTable $RedirectNotificationTo)
                             )
                         }
                     }
@@ -352,7 +352,7 @@ Function Send-UserPasswordExpirationNotice {
 
             $mailObject.message += @{
                 toRecipients = @(
-                    $(ConvertRecipientsToJSON $SendReportToAdmins)
+                    $(RecipientStringToHashTable $SendReportToAdmins)
                 )
             }
 
